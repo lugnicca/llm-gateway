@@ -1,0 +1,87 @@
+services:
+  litellm:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: litellm-gateway
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/health/liveliness')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    networks:
+      - gateway
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: litellm-postgres
+    environment:
+      POSTGRES_DB: litellm
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    networks:
+      - gateway
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: litellm-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "6379:6379"
+    networks:
+      - gateway
+    restart: unless-stopped
+
+  demo-setup:
+    image: alpine:3.20
+    container_name: litellm-demo-setup
+    depends_on:
+      litellm:
+        condition: service_healthy
+    volumes:
+      - ./scripts/demo-setup.sh:/app/demo-setup.sh:ro
+    environment:
+      GATEWAY_URL: http://litellm:4000
+      MASTER_KEY: ${LITELLM_MASTER_KEY}
+    entrypoint: ["sh", "-c", "apk add -q --no-cache bash curl && bash /app/demo-setup.sh"]
+    networks:
+      - gateway
+    restart: "no"
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  gateway:
+    driver: bridge

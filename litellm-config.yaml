@@ -1,0 +1,46 @@
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: true
+
+litellm_settings:
+  drop_params: true
+  set_verbose: false
+  cache: true
+  cache_params:
+    type: redis
+    host: os.environ/REDIS_HOST
+    port: os.environ/REDIS_PORT
+  num_retries: 2
+  request_timeout: 300
+
+model_list:
+  # Wildcard OpenRouter (ZDR) — filet de sécurité, tout le reste via API/UI
+  - model_name: "openrouter/*"
+    litellm_params:
+      model: "openrouter/*"
+      api_key: os.environ/OPENROUTER_API_KEY
+      extra_body:
+        provider:
+          data_collection: "deny"
+    model_info:
+      description: "All OpenRouter models (ZDR enabled)"
+
+mcp_servers:
+  jira:
+    transport: "stdio"
+    command: "npx"
+    args: ["-y", "mcp-jira-cloud"]
+    env:
+      JIRA_BASE_URL: "os.environ/JIRA_BASE_URL"
+      JIRA_EMAIL: "os.environ/JIRA_EMAIL"
+      JIRA_API_TOKEN: "os.environ/JIRA_API_TOKEN"
+
+  gitlab:
+    transport: "stdio"
+    command: "npx"
+    args: ["-y", "@zereight/mcp-gitlab"]
+    env:
+      GITLAB_PERSONAL_ACCESS_TOKEN: "os.environ/GITLAB_PERSONAL_ACCESS_TOKEN"
+      GITLAB_API_URL: "os.environ/GITLAB_API_URL"
+      USE_PIPELINE: "true"

@@ -1,0 +1,42 @@
+# Environment
+.env
+*.env.local
+
+# Terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfplan
+# .terraform.lock.hcl should be committed (locks provider versions)
+
+# Docker
+docker-compose.override.yml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Grafana
+monitoring/grafana-data/
+
+# Postgres data
+postgres-data/
+
+# Redis data
+redis-data/
+
+# Service account keys
+gcp-sa-key.json
+*-sa-key.json
+
+# Terraform variables (contains secrets)
+terraform/terraform.tfvars

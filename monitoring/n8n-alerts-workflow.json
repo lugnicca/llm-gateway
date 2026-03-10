@@ -1,0 +1,378 @@
+{
+  "name": "Lugnicca \u2014 Gateway Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "trigger-budget",
+      "name": "Budget Check (every 5min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 100]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "trigger-error-rate",
+      "name": "Error Rate Check (every 5min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 400]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "trigger-latency",
+      "name": "Latency Check (every 5min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [200, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://prometheus:9090/api/v1/query",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "sum(litellm_spend_total)"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "query-budget",
+      "name": "Query Prometheus: Spend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://prometheus:9090/api/v1/query",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "sum(rate(litellm_request_errors_total[5m])) / sum(rate(litellm_requests_total[5m]))"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "query-error-rate",
+      "name": "Query Prometheus: Error Rate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://prometheus:9090/api/v1/query",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "histogram_quantile(0.95, sum(rate(litellm_request_duration_seconds_bucket[5m])) by (le))"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "query-latency",
+      "name": "Query Prometheus: p95 Latency",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 700]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.data.result[0].value[1] }}",
+              "operation": "largerEqual",
+              "value2": 100
+            }
+          ]
+        }
+      },
+      "id": "if-budget-exceeded",
+      "name": "IF Spend > Threshold ($100)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 100]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.data.result[0].value[1] }}",
+              "operation": "largerEqual",
+              "value2": 0.05
+            }
+          ]
+        }
+      },
+      "id": "if-error-rate-high",
+      "name": "IF Error Rate >= 5%",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.data.result[0].value[1] }}",
+              "operation": "largerEqual",
+              "value2": 10
+            }
+          ]
+        }
+      },
+      "id": "if-latency-high",
+      "name": "IF p95 Latency >= 10s",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [700, 700]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALERT_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "alert",
+              "value": "budget_exceeded"
+            },
+            {
+              "name": "message",
+              "value": "=LLM Gateway spend has reached ${{ $('Query Prometheus: Spend').item.json.data.result[0].value[1] }}. Budget threshold exceeded."
+            },
+            {
+              "name": "severity",
+              "value": "warning"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-budget",
+      "name": "Notify: Budget Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [950, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALERT_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "alert",
+              "value": "high_error_rate"
+            },
+            {
+              "name": "message",
+              "value": "=LLM Gateway error rate is {{ $('Query Prometheus: Error Rate').item.json.data.result[0].value[1] * 100 }}%. Threshold: 5%."
+            },
+            {
+              "name": "severity",
+              "value": "critical"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-error-rate",
+      "name": "Notify: Error Rate Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [950, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.ALERT_WEBHOOK_URL }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "alert",
+              "value": "high_latency"
+            },
+            {
+              "name": "message",
+              "value": "=LLM Gateway p95 latency is {{ $('Query Prometheus: p95 Latency').item.json.data.result[0].value[1] }}s. Threshold: 10s."
+            },
+            {
+              "name": "severity",
+              "value": "warning"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify-latency",
+      "name": "Notify: Latency Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [950, 680]
+    }
+  ],
+  "connections": {
+    "Budget Check (every 5min)": {
+      "main": [
+        [
+          {
+            "node": "Query Prometheus: Spend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Rate Check (every 5min)": {
+      "main": [
+        [
+          {
+            "node": "Query Prometheus: Error Rate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Latency Check (every 5min)": {
+      "main": [
+        [
+          {
+            "node": "Query Prometheus: p95 Latency",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Prometheus: Spend": {
+      "main": [
+        [
+          {
+            "node": "IF Spend > Threshold ($100)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Prometheus: Error Rate": {
+      "main": [
+        [
+          {
+            "node": "IF Error Rate >= 5%",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Prometheus: p95 Latency": {
+      "main": [
+        [
+          {
+            "node": "IF p95 Latency >= 10s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Spend > Threshold ($100)": {
+      "main": [
+        [
+          {
+            "node": "Notify: Budget Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Error Rate >= 5%": {
+      "main": [
+        [
+          {
+            "node": "Notify: Error Rate Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF p95 Latency >= 10s": {
+      "main": [
+        [
+          {
+            "node": "Notify: Latency Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "monitoring"
+    },
+    {
+      "name": "lugnicca"
+    }
+  ],
+  "triggerCount": 3,
+  "active": true,
+  "versionId": "1"
+}

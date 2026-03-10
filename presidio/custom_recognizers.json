@@ -1,0 +1,78 @@
+[
+  {
+    "name": "FrenchPhoneRecognizer",
+    "supported_language": "fr",
+    "patterns": [
+      {
+        "name": "fr_phone_national",
+        "regex": "(?:0|\\+33\\s?)[1-9](?:[\\s.-]?\\d{2}){4}",
+        "score": 0.7
+      }
+    ],
+    "supported_entity": "PHONE_NUMBER"
+  },
+  {
+    "name": "FrenchSSNRecognizer",
+    "supported_language": "fr",
+    "patterns": [
+      {
+        "name": "fr_nir",
+        "regex": "[12]\\s?\\d{2}\\s?(?:0[1-9]|1[0-2])\\s?\\d{2}\\s?\\d{3}\\s?\\d{3}\\s?\\d{2}",
+        "score": 0.85
+      }
+    ],
+    "supported_entity": "FR_SSN",
+    "context": ["numéro", "sécurité sociale", "NIR", "sécu"]
+  },
+  {
+    "name": "FrenchPhoneRecognizerEn",
+    "supported_language": "en",
+    "patterns": [
+      {
+        "name": "fr_phone_national",
+        "regex": "(?:0|\\+33\\s?)[1-9](?:[\\s.-]?\\d{2}){4}",
+        "score": 0.7
+      }
+    ],
+    "supported_entity": "PHONE_NUMBER"
+  },
+  {
+    "name": "FrenchSSNRecognizerEn",
+    "supported_language": "en",
+    "patterns": [
+      {
+        "name": "fr_nir",
+        "regex": "[12]\\s?\\d{2}\\s?(?:0[1-9]|1[0-2])\\s?\\d{2}\\s?\\d{3}\\s?\\d{3}\\s?\\d{2}",
+        "score": 0.85
+      }
+    ],
+    "supported_entity": "FR_SSN",
+    "context": ["number", "social security", "NIR", "SSN"]
+  },
+  {
+    "name": "KoralplayPlayerID",
+    "supported_language": "fr",
+    "patterns": [
+      {
+        "name": "player_id",
+        "regex": "KP-[0-9]{6,10}",
+        "score": 0.9
+      }
+    ],
+    "supported_entity": "PLAYER_ID",
+    "context": ["player", "joueur", "identifiant", "KP"]
+  },
+  {
+    "name": "KoralplayPlayerID",
+    "supported_language": "en",
+    "patterns": [
+      {
+        "name": "player_id",
+        "regex": "KP-[0-9]{6,10}",
+        "score": 0.9
+      }
+    ],
+    "supported_entity": "PLAYER_ID",
+    "context": ["player", "joueur", "identifiant", "KP"]
+  }
+]
